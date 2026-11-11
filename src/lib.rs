@@ -39,11 +39,19 @@ pub extern "C" fn frameflow_compute_layout(system: *mut System, parent: NodeId) 
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn frameflow_is_valid_node(system: *mut System, node_id: NodeId) -> bool {
+    let sys = unsafe { &mut *system };
+    is_valid(sys, node_id)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn frameflow_add_generic(system: *mut System, parent: NodeId) -> NodeId {
     let sys = unsafe { &mut *system };
-    let id = allocate_node(sys);
-
-    id
+    if let Ok(id) = add_generic(sys, parent) {
+        id
+    } else {
+        NodeId::invalid()
+    }
 }
 
 #[unsafe(no_mangle)]

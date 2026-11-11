@@ -25,6 +25,10 @@ impl NodeId {
     pub fn new(index: usize, generation: u32) -> Self {
         NodeId { index, generation }
     }
+
+    pub fn invalid() -> Self {
+        NodeId { index: usize::MAX, generation: 0 }
+    }
 }
 
 #[derive(Debug)]
@@ -135,12 +139,22 @@ impl Node {
     }
 }
 
-pub fn allocate_node(system: &mut System) -> NodeId {
+impl System {
+    pub fn new() -> Self {
+        System {
+            alloc: Vec::new(),
+            roots: Vec::new(),
+            free_list: Vec::new(),
+        }
+    }
+}
+
+pub fn allocate_node(system: &mut System, node_type: NodeType) -> NodeId {
     if let Some(index) = system.free_list.pop() {
         NodeId::new(index, 0)
     } else {
         let index = system.alloc.len();
-        // system.alloc.push(Node {});
+        system.alloc.push(Node::new(node_type));
         NodeId::new(index, 0)
     }
 }
@@ -154,12 +168,27 @@ pub fn get_node(system: &mut System, id: NodeId) -> Option<&mut Node> {
     Some(node)
 }
 
-impl System {
-    pub fn new() -> Self {
-        System {
-            alloc: Vec::new(),
-            roots: Vec::new(),
-            free_list: Vec::new(),
-        }
+pub fn is_valid(system: &mut System, id: NodeId) -> bool {
+    if id.index == usize::MAX {
+        return false;
     }
+    if id.index >= system.alloc.len() {
+        return false;
+    }
+
+    let node = &system.alloc[id.index];
+    node.alive && node.generation == id.generation
 }
+
+pub fn add_generic(system: &mut System, parent: NodeId) -> Result<NodeId, ()> {
+    if !is_valid(system, parent) { return Err(()); }
+    let id = allocate_node(system, NodeType::Generic);
+    let node = &mut system.alloc[id.index];
+
+    node.parent = Some(parent);
+
+    system.alloc[parent.index].children.push(id);
+
+    Ok(id)
+}
+
